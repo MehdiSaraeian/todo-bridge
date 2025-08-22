@@ -1,0 +1,18 @@
+title,notes,project,tags,isDone,timeEstimate,created,modified,dueDay,dueWithTime,remindAt,subtasks
+"Help the new intern","She is looking for housing options","Work","important",false,"2h",,,2024-01-15,,,"Share URL | Contact landlord | Schedule viewing"
+"Add demo to the project","Implement demo features and UI","Work","important",false,"1h 30m",,,2024-01-15,,,"Create CSV demo | Create MD demo | Test conversions"
+"Setup development environment","Install Python, create virtual environment, and setup IDE","Project Setup","development,setup",false,"2h",,,2024-01-15,,,
+"Write unit tests","Create comprehensive test suite for all components","Development","testing,quality",false,"4h",,,2024-01-20,,,
+"Design database schema","Plan and create database tables for user data","Backend","database,design",true,"3h",,,2024-01-18,,,
+"Create login page","Implement user authentication UI with validation","Frontend","ui,auth",false,"2h 30m",,,2024-01-22,,,
+"Configure CI/CD pipeline","Setup automated testing and deployment","DevOps","automation,deployment",false,"1h 45m",,,2024-01-25,,,
+"Write API documentation","Document all REST endpoints with examples","Documentation","api,docs",false,"3h 15m",,,2024-01-30,,,
+"Optimize database queries","Review and improve slow database operations","Performance","database,optimization",false,"1.5h",,,2024-02-05,,,
+"Create user dashboard","Build main dashboard with widgets and charts","Frontend","ui,dashboard",false,"5h",,,2024-02-10,,,
+"Implement email notifications","Setup email service for user alerts","Backend","email,notifications",false,"2h 20m",,,2024-02-15,,,
+"Security audit","Review code for security vulnerabilities","Security","security,audit",false,"4h 30m",,,2024-02-20,,,
+"Mobile responsive design","Ensure app works well on mobile devices","Frontend","mobile,responsive",false,"3h",,,2024-02-25,,,
+"Performance testing","Load test the application with simulated users","Testing","performance,load-testing",false,"2h",,,2024-03-01,,,
+"Deploy to production","Final deployment to live environment","Deployment","production,deployment",false,"1h",,,2024-03-05,,,
+"User training materials","Create guides and tutorials for end users","Documentation","training,guides",false,"4h",,,2024-03-10,,,
+"Monitor and analytics setup","Implement logging and monitoring systems","DevOps","monitoring,analytics",false,"2h 45m",,,2024-03-15,,,

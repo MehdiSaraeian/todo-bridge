@@ -1,0 +1,9 @@
+# Production dependencies (none - uses only Python standard library)
+# For development dependencies, see pyproject.toml [project.optional-dependencies]
+
+# Development dependencies (optional)
+# Install with: pip install -e ".[dev]"
+# pytest>=7.0
+# pytest-cov>=4.0
+# mypy>=1.0
+# ruff>=0.1.0
