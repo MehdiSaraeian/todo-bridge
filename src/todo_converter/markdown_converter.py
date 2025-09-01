@@ -551,27 +551,12 @@ class MarkdownConverter(BaseConverter):
                 content = re.sub(pattern, "", content, flags=re.IGNORECASE)
                 break
 
-        # Extract markdown formatting and convert to notes
+        # Extract markdown bold formatting once and convert to notes
         bold_pattern = r"\*\*([^*]+)\*\*"
         bold_matches = re.findall(bold_pattern, content)
         if bold_matches:
-            notes_parts = []
-            for bold_text in bold_matches:
-                notes_parts.append(f"**{bold_text}**")
-            if notes_parts:
-                result["notes"] = "\n".join(notes_parts)
-            # Remove bold formatting from title
-            content = re.sub(bold_pattern, r"\1", content)
-
-        # Extract markdown formatting and convert to notes
-        bold_pattern = r"\*\*([^*]+)\*\*"
-        bold_matches = re.findall(bold_pattern, content)
-        if bold_matches:
-            notes_parts = []
-            for bold_text in bold_matches:
-                notes_parts.append(f"**{bold_text}**")
-            if notes_parts:
-                result["notes"] = "\n".join(notes_parts)
+            notes_parts = [f"**{bold_text}**" for bold_text in bold_matches]
+            result["notes"] = "\n".join(notes_parts)
             # Remove bold formatting from title
             content = re.sub(bold_pattern, r"\1", content)
 
