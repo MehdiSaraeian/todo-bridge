@@ -208,7 +208,7 @@ class BaseConverter(ABC):
         project_entities = {proj.id: proj.to_dict() for proj in self.projects.values()}
         tag_entities = {tag.id: tag.to_dict() for tag in self.tags.values()}
 
-        current_time = int(time.time() * 1000)
+        current_time = int(self.tasks[0].created if self.tasks else time.time() * 1000)
 
         return {
             "data": {
