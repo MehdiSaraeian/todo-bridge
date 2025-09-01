@@ -505,6 +505,14 @@ class MarkdownConverter(BaseConverter):
                 path = match.group(1)
                 title = match.group(2) if match.group(2) else None
 
+                # Security: Validate path to prevent path traversal attacks
+                # For FILE type, ensure path doesn't contain dangerous patterns
+                if attachment_type == "FILE":
+                    # Check for path traversal attempts
+                    if ".." in path or path.startswith("/") or path.startswith("\\") or ":" in path[1:]:
+                        print(f"Warning: Skipping potentially unsafe file path: {path}")
+                        continue
+
                 attachment = {
                     "id": generate_id(),
                     "type": attachment_type,
