@@ -141,7 +141,7 @@ class TestMarkdownConverter:
             converter.parse()
 
             tasks = converter.tasks
-            assert len(tasks) == 6
+            assert len(tasks) == 5  # 2 main tasks + 3 first-level subtasks
 
             # Find main tasks (no parent)
             main_tasks = [task for task in tasks if task.parentId is None]
@@ -157,11 +157,12 @@ class TestMarkdownConverter:
             subtasks_1 = [task for task in tasks if task.parentId == main_task_1.id]
             assert len(subtasks_1) == 2
 
-            # Check sub-subtask
+            # Check that sub-subtask is preserved as notes in Subtask 1.2
             subtask_1_2 = next(
                 task for task in subtasks_1 if task.title == "Subtask 1.2"
             )
-            assert len(subtask_1_2.subTaskIds) == 1
+            assert subtask_1_2.notes is not None
+            assert "Sub-subtask 1.2.1" in subtask_1_2.notes
 
         finally:
             md_file.unlink()
@@ -322,6 +323,508 @@ class TestMarkdownConverter:
             # Check completion status
             completed_tasks = [task for task in tasks if task.isDone]
             assert len(completed_tasks) == 2
+
+        finally:
+            md_file.unlink()
+
+    def test_notes_based_subtask_creation(self) -> None:
+        """Test creating subtasks from markdown lists in notes field."""
+        markdown_content = """# Project with Notes Subtasks
+
+- [ ] Parent task with subtasks #parent
+  This task has some additional context.
+
+  - [ ] First subtask (2h) #child
+  - [ ] Second subtask (1h 30m) #child
+    - [ ] Nested subtask-level1
+      - [ ] Nested subtask-level2
+  - [ ] Third subtask (1h 30m) #child
+
+  Some additional notes about the parent task.
+"""
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+            f.write(markdown_content)
+            md_file = Path(f.name)
+
+        try:
+            converter = MarkdownConverter(md_file)
+            converter.parse()
+
+            # Should have 1 parent + 3 subtasks from notes = 4 total tasks
+            assert len(converter.tasks) == 4
+
+            # Find parent task
+            parent_task = next(
+                task for task in converter.tasks if "Parent task" in task.title
+            )
+            assert parent_task is not None
+            assert len(parent_task.subTaskIds) == 3
+
+            # Check that subtasks were created from notes
+            subtasks = [
+                task for task in converter.tasks if task.parentId == parent_task.id
+            ]
+            assert len(subtasks) == 3
+
+            # Check first subtask
+            first_subtask = next(
+                task for task in subtasks if "First subtask" in task.title
+            )
+            assert first_subtask.timeEstimate == 7200000  # 2h = 7,200,000 ms
+            assert "child" in [
+                converter.tags[tag_id].title for tag_id in first_subtask.tagIds
+            ]
+
+            # Check second subtask (should have nested content in notes)
+            second_subtask = next(
+                task for task in subtasks if "Second subtask" in task.title
+            )
+            assert second_subtask.timeEstimate == 5400000  # 1h 30m = 5,400,000 ms
+            assert second_subtask.notes is not None
+            assert "Nested subtask-level1" in second_subtask.notes
+            assert "Nested subtask-level2" in second_subtask.notes
+
+            # Check third subtask
+            third_subtask = next(
+                task for task in subtasks if "Third subtask" in task.title
+            )
+            assert third_subtask.timeEstimate == 5400000  # 1h 30m = 5,400,000 ms
+
+        finally:
+            md_file.unlink()
+
+    def test_notes_subtasks_only_first_level(self) -> None:
+        """Test that only first-level subtasks are created from notes."""
+        markdown_content = """# Deep Nesting Test
+
+- [ ] Main task
+
+  - [ ] Level 1 subtask
+    - [ ] Level 2 item (should be in notes)
+      - [ ] Level 3 item (should be in notes)
+    - [ ] Another level 2 item
+  - [ ] Another level 1 subtask
+"""
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+            f.write(markdown_content)
+            md_file = Path(f.name)
+
+        try:
+            converter = MarkdownConverter(md_file)
+            converter.parse()
+
+            # Should have 1 main + 2 level-1 subtasks = 3 total tasks
+            assert len(converter.tasks) == 3
+
+            # Find main task
+            main_task = next(
+                task for task in converter.tasks if "Main task" in task.title
+            )
+            assert len(main_task.subTaskIds) == 2
+
+            # Find level 1 subtasks
+            level1_subtasks = [
+                task for task in converter.tasks if task.parentId == main_task.id
+            ]
+            assert len(level1_subtasks) == 2
+
+            # Check that first level 1 subtask has nested content in notes
+            first_level1 = next(
+                task for task in level1_subtasks if "Level 1 subtask" in task.title
+            )
+            assert first_level1.notes is not None
+            assert "Level 2 item (should be in notes)" in first_level1.notes
+            assert "Level 3 item (should be in notes)" in first_level1.notes
+            assert "Another level 2 item" in first_level1.notes
+
+        finally:
+            md_file.unlink()
+
+    def test_notes_mixed_content(self) -> None:
+        """Test notes with mixed content (tasks and regular text)."""
+        markdown_content = """# Mixed Content Test
+
+- [ ] Task with mixed notes
+
+  This is some regular text in the notes.
+
+  - [ ] First subtask from notes
+  - [ ] Second subtask from notes
+
+  More regular text after the subtasks.
+
+  **Important note:** This should be preserved.
+"""
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+            f.write(markdown_content)
+            md_file = Path(f.name)
+
+        try:
+            converter = MarkdownConverter(md_file)
+            converter.parse()
+
+            # Should have 1 main + 2 subtasks = 3 total tasks
+            assert len(converter.tasks) == 3
+
+            # Find main task
+            main_task = next(
+                task
+                for task in converter.tasks
+                if "Task with mixed notes" in task.title
+            )
+            assert len(main_task.subTaskIds) == 2
+
+            # Check that non-task content is preserved in notes
+            # The notes should still contain the regular text content
+            # but the task items should be removed
+            assert main_task.notes is not None
+            assert "This is some regular text" in main_task.notes
+            assert "More regular text after" in main_task.notes
+            assert "Important note" in main_task.notes
+            # Task items should be removed from notes
+            assert "First subtask from notes" not in main_task.notes
+            assert "Second subtask from notes" not in main_task.notes
+
+        finally:
+            md_file.unlink()
+
+    def test_notes_completion_status(self) -> None:
+        """Test that completion status is preserved in notes-based subtasks."""
+        markdown_content = """# Completion Status Test
+
+- [ ] Parent task
+
+  - [x] Completed subtask
+  - [ ] Incomplete subtask
+  - [X] Another completed subtask
+"""
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+            f.write(markdown_content)
+            md_file = Path(f.name)
+
+        try:
+            converter = MarkdownConverter(md_file)
+            converter.parse()
+
+            # Should have 1 parent + 3 subtasks = 4 total tasks
+            assert len(converter.tasks) == 4
+
+            # Find parent task
+            parent_task = next(
+                task for task in converter.tasks if "Parent task" in task.title
+            )
+
+            # Find subtasks
+            subtasks = [
+                task for task in converter.tasks if task.parentId == parent_task.id
+            ]
+            assert len(subtasks) == 3
+
+            # Check completion status
+            completed_subtasks = [task for task in subtasks if task.isDone]
+            incomplete_subtasks = [task for task in subtasks if not task.isDone]
+
+            assert len(completed_subtasks) == 2
+            assert len(incomplete_subtasks) == 1
+
+            # Check that completed tasks have doneOn timestamp
+            for task in completed_subtasks:
+                assert task.doneOn is not None
+
+        finally:
+            md_file.unlink()
+
+    def test_extended_metadata_parsing(self) -> None:
+        """Test parsing of extended metadata including attachments, due dates with time, etc."""
+        markdown_content = """# Extended Metadata Test
+
+- [ ] Task with attachments @link:https://example.com "Example Link" @file:/path/to/file.pdf "Important Doc" @img:https://example.com/image.jpg
+- [ ] Task with due time @due:2023-12-31T14:00 #urgent
+- [ ] Simple task with date @due:2023-12-25
+"""
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+            f.write(markdown_content)
+            md_file = Path(f.name)
+
+        try:
+            converter = MarkdownConverter(md_file)
+            converter.parse()
+
+            # Should have 3 tasks
+            assert len(converter.tasks) == 3
+
+            # Test attachments
+            task_with_attachments = converter.tasks[0]
+            assert len(task_with_attachments.attachments) == 3
+
+            # Check link attachment
+            link_attachment = next(
+                att for att in task_with_attachments.attachments if att.type == "LINK"
+            )
+            assert link_attachment.path == "https://example.com"
+            assert link_attachment.title == "Example Link"
+
+            # Check file attachment
+            file_attachment = next(
+                att for att in task_with_attachments.attachments if att.type == "FILE"
+            )
+            assert file_attachment.path == "/path/to/file.pdf"
+            assert file_attachment.title == "Important Doc"
+
+            # Check image attachment
+            img_attachment = next(
+                att for att in task_with_attachments.attachments if att.type == "IMG"
+            )
+            assert img_attachment.path == "https://example.com/image.jpg"
+            assert img_attachment.title is None  # No title provided
+
+            # Test due date with time
+            task_with_due_time = converter.tasks[1]
+            assert task_with_due_time.dueDay == "2023-12-31"
+            assert task_with_due_time.dueWithTime is not None
+
+            # Test simple due date
+            task_with_simple_date = converter.tasks[2]
+            assert task_with_simple_date.dueDay == "2023-12-25"
+            assert task_with_simple_date.dueWithTime is None
+
+        finally:
+            md_file.unlink()
+
+    def test_comprehensive_task_features(self) -> None:
+        """Test a comprehensive example with many task features combined."""
+        markdown_content = """# Comprehensive Task Test
+
+- [ ] Complex parent task (3h) @due:2025-08-31T09:00 #work #urgent @link:https://docs.example.com "Project Docs"
+
+  This task has comprehensive notes and metadata.
+
+  **Important:** Check all requirements first.
+
+  - [ ] Subtask 1 (1h) @due:2025-08-30 #work
+    Notes for subtask 1.
+    - [ ] Deep nested item
+      - [ ] Very deep item
+  - [x] Completed subtask (30m) #work
+  - [ ] Final subtask (1h 30m) @file:/project/specs.pdf "Specifications" #work
+
+  Additional parent notes after subtasks.
+
+  Links and references should be preserved.
+"""
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+            f.write(markdown_content)
+            md_file = Path(f.name)
+
+        try:
+            converter = MarkdownConverter(md_file)
+            converter.parse()
+
+            # Should have 1 parent + 3 subtasks = 4 total tasks
+            assert len(converter.tasks) == 4
+
+            # Find parent task
+            parent_task = next(
+                task for task in converter.tasks if "Complex parent task" in task.title
+            )
+
+            # Test parent task properties
+            assert parent_task.timeEstimate == 10800000  # 3h in milliseconds
+            assert parent_task.dueDay == "2025-08-31"
+            assert parent_task.dueWithTime is not None
+            assert len(parent_task.tagIds) >= 2  # work and urgent tags
+            assert len(parent_task.attachments) == 1
+            assert parent_task.attachments[0].type == "LINK"
+            assert parent_task.attachments[0].path == "https://docs.example.com"
+            assert parent_task.attachments[0].title == "Project Docs"
+
+            # Test parent notes preservation
+            assert parent_task.notes is not None
+            assert "This task has comprehensive notes" in parent_task.notes
+            assert "Important:** Check all requirements" in parent_task.notes
+            assert "Additional parent notes after subtasks" in parent_task.notes
+            assert "Links and references should be preserved" in parent_task.notes
+
+            # Test subtasks
+            subtasks = [
+                task for task in converter.tasks if task.parentId == parent_task.id
+            ]
+            assert len(subtasks) == 3
+
+            # Test completed subtask
+            completed_subtask = next(
+                task for task in subtasks if "Completed subtask" in task.title
+            )
+            assert completed_subtask.isDone is True
+            assert completed_subtask.doneOn is not None
+            assert completed_subtask.timeEstimate == 1800000  # 30m in milliseconds
+
+            # Test subtask with attachment
+            subtask_with_file = next(
+                task for task in subtasks if "Final subtask" in task.title
+            )
+            assert len(subtask_with_file.attachments) == 1
+            assert subtask_with_file.attachments[0].type == "FILE"
+            assert subtask_with_file.attachments[0].path == "/project/specs.pdf"
+            assert subtask_with_file.attachments[0].title == "Specifications"
+
+            # Test subtask with nested content
+            subtask_with_nested = next(
+                task for task in subtasks if "Subtask 1" in task.title
+            )
+            assert subtask_with_nested.notes is not None
+            assert "Notes for subtask 1" in subtask_with_nested.notes
+            assert "Deep nested item" in subtask_with_nested.notes
+            assert "Very deep item" in subtask_with_nested.notes
+
+        finally:
+            md_file.unlink()
+
+    def test_parent_and_child_notes_preservation(self) -> None:
+        """Test that both parent and child tasks can have their own notes."""
+        markdown_content = """# Parent and Child Notes Test
+
+- [ ] Parent task with notes #parent
+
+  This is important context for the parent task.
+
+  **Remember:** Check the documentation first.
+
+  - [ ] Child task 1 (1h) #child
+    This child has its own notes.
+    - [ ] Nested item for child 1
+  - [ ] Child task 2 (2h) #child
+    This child also has notes.
+    And multiple lines of notes.
+
+  More parent notes after the children.
+
+  Final parent note.
+"""
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+            f.write(markdown_content)
+            md_file = Path(f.name)
+
+        try:
+            converter = MarkdownConverter(md_file)
+            converter.parse()
+
+            # Should have 1 parent + 2 children = 3 total tasks
+            assert len(converter.tasks) == 3
+
+            # Find parent task
+            parent_task = next(
+                task for task in converter.tasks if "Parent task" in task.title
+            )
+            assert parent_task is not None
+            assert len(parent_task.subTaskIds) == 2
+
+            # Check parent task notes
+            assert parent_task.notes is not None
+            assert "This is important context for the parent task" in parent_task.notes
+            assert "Remember:** Check the documentation first" in parent_task.notes
+            assert "More parent notes after the children" in parent_task.notes
+            assert "Final parent note" in parent_task.notes
+
+            # The child task items should be removed from parent notes
+            assert "Child task 1" not in parent_task.notes
+            assert "Child task 2" not in parent_task.notes
+
+            # Find child tasks
+            child_tasks = [
+                task for task in converter.tasks if task.parentId == parent_task.id
+            ]
+            assert len(child_tasks) == 2
+
+            # Check first child task
+            child1 = next(task for task in child_tasks if "Child task 1" in task.title)
+            assert child1.notes is not None
+            assert "This child has its own notes" in child1.notes
+            assert "Nested item for child 1" in child1.notes
+            assert child1.timeEstimate == 3600000  # 1h
+
+            # Check second child task
+            child2 = next(task for task in child_tasks if "Child task 2" in task.title)
+            assert child2.notes is not None
+            assert "This child also has notes" in child2.notes
+            assert "And multiple lines of notes" in child2.notes
+            assert child2.timeEstimate == 7200000  # 2h
+
+        finally:
+            md_file.unlink()
+
+    def test_mixed_notes_and_tasks_complex(self) -> None:
+        """Test complex scenarios with mixed notes and tasks at different levels."""
+        markdown_content = """# Complex Mixed Content
+
+- [ ] Main task
+
+  Initial notes for main task.
+
+  - [ ] Subtask A
+    Notes for subtask A.
+    - [ ] Deep item A1
+    - [ ] Deep item A2
+      - [ ] Very deep item
+    More notes for subtask A.
+
+  Middle notes for main task.
+
+  - [ ] Subtask B
+    Different notes for subtask B.
+
+  Final notes for main task.
+"""
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+            f.write(markdown_content)
+            md_file = Path(f.name)
+
+        try:
+            converter = MarkdownConverter(md_file)
+            converter.parse()
+
+            # Should have 1 main + 2 subtasks = 3 total tasks
+            assert len(converter.tasks) == 3
+
+            # Find main task
+            main_task = next(
+                task for task in converter.tasks if "Main task" in task.title
+            )
+            assert main_task.notes is not None
+            assert "Initial notes for main task" in main_task.notes
+            assert "Middle notes for main task" in main_task.notes
+            assert "Final notes for main task" in main_task.notes
+            # Subtask lines should be removed
+            assert "Subtask A" not in main_task.notes
+            assert "Subtask B" not in main_task.notes
+
+            # Find subtasks
+            subtasks = [
+                task for task in converter.tasks if task.parentId == main_task.id
+            ]
+            assert len(subtasks) == 2
+
+            # Check subtask A
+            subtask_a = next(task for task in subtasks if "Subtask A" in task.title)
+            assert subtask_a.notes is not None
+            assert "Notes for subtask A" in subtask_a.notes
+            assert "Deep item A1" in subtask_a.notes
+            assert "Deep item A2" in subtask_a.notes
+            assert "Very deep item" in subtask_a.notes
+            assert "More notes for subtask A" in subtask_a.notes
+
+            # Check subtask B
+            subtask_b = next(task for task in subtasks if "Subtask B" in task.title)
+            assert subtask_b.notes is not None
+            assert "Different notes for subtask B" in subtask_b.notes
 
         finally:
             md_file.unlink()

@@ -14,6 +14,28 @@ from typing import Any
 
 
 @dataclass
+class Attachment:
+    """
+    Attachment model for tasks.
+
+    Supports different types of attachments including links, images, and files.
+    """
+
+    id: str
+    type: str  # "LINK", "IMG", "FILE"
+    path: str
+    title: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert attachment to dictionary format for JSON serialization."""
+        result = {}
+        for key, value in self.__dict__.items():
+            if value is not None:
+                result[key] = value
+        return result
+
+
+@dataclass
 class Task:
     """
     Task model compatible with Super Productivity format.
@@ -37,7 +59,7 @@ class Task:
     # Additional fields for internal use
     timeSpentOnDay: dict[str, int] = field(default_factory=dict)
     doneOn: int | None = None
-    attachments: list[Any] = field(default_factory=list)
+    attachments: list[Attachment] = field(default_factory=list)
     reminderId: str | None = None
     repeatCfgId: str | None = None
 
@@ -64,7 +86,16 @@ class Task:
         result = {}
         for key, value in self.__dict__.items():
             if value is not None:
-                result[key] = value
+                if key == "attachments" and isinstance(value, list):
+                    # Convert Attachment objects to dictionaries
+                    result[key] = [
+                        attachment.to_dict()
+                        if hasattr(attachment, "to_dict")
+                        else attachment
+                        for attachment in value
+                    ]
+                else:
+                    result[key] = value
         return result
 
 
