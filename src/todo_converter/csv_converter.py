@@ -116,10 +116,19 @@ class CSVConverter(BaseConverter):
         if due_with_time_str:
             try:
                 from datetime import datetime
+                import re
 
-                parsed_datetime = datetime.fromisoformat(
-                    due_with_time_str.replace("Z", "+00:00")
-                )
+                # Handle ISO format with timezone
+                if due_with_time_str.endswith('Z'):
+                    # Z means UTC, convert to +00:00 for fromisoformat
+                    iso_str = due_with_time_str[:-1] + '+00:00'
+                elif re.match(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$', due_with_time_str):
+                    # ISO format without timezone, assume local time
+                    iso_str = due_with_time_str
+                else:
+                    iso_str = due_with_time_str
+
+                parsed_datetime = datetime.fromisoformat(iso_str)
                 task.dueWithTime = int(parsed_datetime.timestamp() * 1000)
             except ValueError:
                 # Try parsing as date only

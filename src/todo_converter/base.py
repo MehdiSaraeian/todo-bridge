@@ -213,7 +213,7 @@ class BaseConverter(ABC):
         project_entities = {proj.id: proj.to_dict() for proj in self.projects.values()}
         tag_entities = {tag.id: tag.to_dict() for tag in self.tags.values()}
 
-        current_time = int(self.tasks[0].created if self.tasks else 0)
+        current_time = int(self.tasks[0].created if self.tasks else time.time() * 1000)
 
         return {
             "data": {
@@ -221,7 +221,7 @@ class BaseConverter(ABC):
                     "ids": list(task_entities.keys()),
                     "entities": task_entities,
                     "currentTaskId": None,
-                    "selectedTaskId": list(task_entities.keys())[0]
+                    "selectedTaskId": next(iter(task_entities.keys()), None)
                     if task_entities
                     else None,
                     "taskDetailTargetPanel": "Default",
@@ -420,6 +420,20 @@ class BaseConverter(ABC):
         }
         new_tag_entities = {tag.id: tag.to_dict() for tag in self.tags.values()}
 
+        # Create efficient lookup dictionaries for tasks by project and tag
+        tasks_by_project = {}
+        tasks_by_tag = {}
+        for task in self.tasks:
+            if task.projectId:
+                if task.projectId not in tasks_by_project:
+                    tasks_by_project[task.projectId] = []
+                tasks_by_project[task.projectId].append(task.id)
+            
+            for tag_id in task.tagIds:
+                if tag_id not in tasks_by_tag:
+                    tasks_by_tag[tag_id] = []
+                tasks_by_tag[tag_id].append(task.id)
+
         # Merge projects (avoid duplicates by title)
         merged_projects = existing_projects.copy()
         project_title_to_id = {
@@ -430,17 +444,11 @@ class BaseConverter(ABC):
             if new_proj["title"] in project_title_to_id:
                 # Project exists, update tasks to use existing project ID
                 existing_proj_id = project_title_to_id[new_proj["title"]]
-                # Add new tasks to existing project's task list BEFORE reassigning
-                if existing_proj_id in merged_projects:
-                    for task in self.tasks:
-                        if task.projectId == new_proj_id:
-                            if (
-                                task.id
-                                not in merged_projects[existing_proj_id]["taskIds"]
-                            ):
-                                merged_projects[existing_proj_id]["taskIds"].append(
-                                    task.id
-                                )
+                # Add new tasks to existing project's task list efficiently
+                if existing_proj_id in merged_projects and new_proj_id in tasks_by_project:
+                    for task_id in tasks_by_project[new_proj_id]:
+                        if task_id not in merged_projects[existing_proj_id]["taskIds"]:
+                            merged_projects[existing_proj_id]["taskIds"].append(task_id)
                 # Now reassign the project IDs
                 self._reassign_tasks_to_existing_project(new_proj_id, existing_proj_id)
             else:
@@ -457,12 +465,11 @@ class BaseConverter(ABC):
             if new_tag["title"] in tag_title_to_id:
                 # Tag exists, update tasks to use existing tag ID
                 existing_tag_id = tag_title_to_id[new_tag["title"]]
-                # Add new tasks to existing tag's task list BEFORE reassigning
-                if existing_tag_id in merged_tags:
-                    for task in self.tasks:
-                        if new_tag_id in task.tagIds:
-                            if task.id not in merged_tags[existing_tag_id]["taskIds"]:
-                                merged_tags[existing_tag_id]["taskIds"].append(task.id)
+                # Add new tasks to existing tag's task list efficiently
+                if existing_tag_id in merged_tags and new_tag_id in tasks_by_tag:
+                    for task_id in tasks_by_tag[new_tag_id]:
+                        if task_id not in merged_tags[existing_tag_id]["taskIds"]:
+                            merged_tags[existing_tag_id]["taskIds"].append(task_id)
                 # Now reassign the tag IDs
                 self._reassign_tasks_to_existing_tag(new_tag_id, existing_tag_id)
             else:
