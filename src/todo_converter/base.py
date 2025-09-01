@@ -184,36 +184,31 @@ class BaseConverter(ABC):
         Returns:
             Dictionary containing the complete Super Productivity data structure
         """
+        # Create lookup dictionaries for O(1) access instead of O(n) loops
+        project_lookup = {proj.id: proj for proj in self.projects.values()}
+        tag_lookup = {tag.id: tag for tag in self.tags.values()}
+        
         # Ensure all tasks are linked to their projects
         for task in self.tasks:
-            if task.projectId:
-                project = None
-                for proj in self.projects.values():
-                    if proj.id == task.projectId:
-                        project = proj
-                        break
-
-                if project and task.id not in project.taskIds:
+            if task.projectId and task.projectId in project_lookup:
+                project = project_lookup[task.projectId]
+                if task.id not in project.taskIds:
                     project.taskIds.append(task.id)
 
         # Ensure all tasks are linked to their tags
         for task in self.tasks:
             for tag_id in task.tagIds:
-                tag = None
-                for t in self.tags.values():
-                    if t.id == tag_id:
-                        tag = t
-                        break
-
-                if tag and task.id not in tag.taskIds:
-                    tag.taskIds.append(task.id)
+                if tag_id in tag_lookup:
+                    tag = tag_lookup[tag_id]
+                    if task.id not in tag.taskIds:
+                        tag.taskIds.append(task.id)
 
         # Convert to dictionary format
         task_entities = {task.id: task.to_dict() for task in self.tasks}
         project_entities = {proj.id: proj.to_dict() for proj in self.projects.values()}
         tag_entities = {tag.id: tag.to_dict() for tag in self.tags.values()}
 
-        current_time = int(self.tasks[0].created if self.tasks else 0)
+        current_time = int(time.time() * 1000)
 
         return {
             "data": {
@@ -493,29 +488,24 @@ class BaseConverter(ABC):
 
     def _prepare_for_merge(self) -> None:
         """Prepare tasks for merging by ensuring proper linkages."""
+        # Create lookup dictionaries for O(1) access instead of O(n) loops
+        project_lookup = {proj.id: proj for proj in self.projects.values()}
+        tag_lookup = {tag.id: tag for tag in self.tags.values()}
+        
         # Ensure all tasks are linked to their projects
         for task in self.tasks:
-            if task.projectId:
-                project = None
-                for proj in self.projects.values():
-                    if proj.id == task.projectId:
-                        project = proj
-                        break
-
-                if project and task.id not in project.taskIds:
+            if task.projectId and task.projectId in project_lookup:
+                project = project_lookup[task.projectId]
+                if task.id not in project.taskIds:
                     project.taskIds.append(task.id)
 
         # Ensure all tasks are linked to their tags
         for task in self.tasks:
             for tag_id in task.tagIds:
-                tag = None
-                for t in self.tags.values():
-                    if t.id == tag_id:
-                        tag = t
-                        break
-
-                if tag and task.id not in tag.taskIds:
-                    tag.taskIds.append(task.id)
+                if tag_id in tag_lookup:
+                    tag = tag_lookup[tag_id]
+                    if task.id not in tag.taskIds:
+                        tag.taskIds.append(task.id)
 
     def _reassign_tasks_to_existing_project(
         self, old_project_id: str, new_project_id: str
