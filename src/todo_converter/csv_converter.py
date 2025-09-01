@@ -40,7 +40,14 @@ class CSVConverter(BaseConverter):
             sample = csvfile.read(1024)
             csvfile.seek(0)
             sniffer = csv.Sniffer()
-            delimiter = sniffer.sniff(sample).delimiter
+            try:
+                delimiter = sniffer.sniff(sample).delimiter
+                # Fallback to comma if sniffer returns an unexpected single-letter result (e.g. "t")
+                if delimiter not in {",", ";", "\t", "|"}:
+                    delimiter = ","
+            except csv.Error:
+                # In case the sample is too small or malformed, default to comma
+                delimiter = ","
 
             reader = csv.DictReader(csvfile, delimiter=delimiter)
 
@@ -52,6 +59,11 @@ class CSVConverter(BaseConverter):
                 except Exception as e:
                     print(f"Warning: Error parsing row {row_num}: {e}")
                     continue
+
+            # Add any subtasks collected during parsing (avoids modifying list during iteration)
+            if hasattr(self, "_pending_subtasks"):
+                self.tasks.extend(self._pending_subtasks)  # type: ignore[attr-defined]
+                delattr(self, "_pending_subtasks")
 
     def _parse_csv_row(self, row: dict[str, str]) -> Optional[Task]:
         """
@@ -165,6 +177,10 @@ class CSVConverter(BaseConverter):
                     tagIds=task.tagIds.copy(),
                 )
                 task.subTaskIds.append(subtask.id)
-                self.tasks.append(subtask)
+                # We'll append subtasks later to avoid mutating self.tasks while iterating caller
+                # Return them so caller can extend.
+                if not hasattr(self, "_pending_subtasks"):
+                    self._pending_subtasks = []  # type: ignore[attr-defined]
+                self._pending_subtasks.append(subtask)
 
         return task

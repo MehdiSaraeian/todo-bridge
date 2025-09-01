@@ -147,22 +147,28 @@ class BaseConverter(ABC):
         Returns:
             Time estimate in milliseconds
         """
-        if not estimate_str or estimate_str.strip() == "":
-            return 0
+        # Cache compiled regex patterns for better performance
+        if not hasattr(self, "_time_estimate_patterns"):
+            import re
 
-        import re
+            self._time_estimate_patterns = {
+                "hours": re.compile(r"(\d+\.?\d*)\s*h"),
+                "minutes": re.compile(r"(\d+\.?\d*)\s*m"),
+            }
+
+        patterns = self._time_estimate_patterns  # type: ignore[attr-defined]
 
         estimate_str = estimate_str.strip().lower()
         total_ms = 0
 
         # Find hours
-        hours_match = re.search(r"(\d+\.?\d*)\s*h", estimate_str)
+        hours_match = patterns["hours"].search(estimate_str)
         if hours_match:
             hours = float(hours_match.group(1))
             total_ms += int(hours * 60 * 60 * 1000)
 
         # Find minutes
-        minutes_match = re.search(r"(\d+\.?\d*)\s*m", estimate_str)
+        minutes_match = patterns["minutes"].search(estimate_str)
         if minutes_match:
             minutes = float(minutes_match.group(1))
             total_ms += int(minutes * 60 * 1000)
@@ -176,6 +182,18 @@ class BaseConverter(ABC):
                 total_ms = 0
 
         return total_ms
+
+    # --- Security helpers ---
+    @staticmethod
+    def _sanitize_text(text: str) -> str:
+        """Remove control characters that could lead to CSV or Markdown injection."""
+        import re, unicodedata
+
+        # Remove control chars
+        text = "".join(ch for ch in text if unicodedata.category(ch)[0] != "C")
+        # Strip zero-width spaces and similar
+        text = re.sub(r"[\u200B-\u200D\uFEFF]", "", text)
+        return text
 
     def get_super_productivity_data(self) -> dict[str, Any]:
         """
