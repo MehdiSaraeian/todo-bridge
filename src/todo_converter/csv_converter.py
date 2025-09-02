@@ -39,8 +39,13 @@ class CSVConverter(BaseConverter):
             # Try to detect delimiter
             sample = csvfile.read(1024)
             csvfile.seek(0)
-            sniffer = csv.Sniffer()
-            delimiter = sniffer.sniff(sample).delimiter
+            
+            try:
+                sniffer = csv.Sniffer()
+                delimiter = sniffer.sniff(sample).delimiter
+            except (csv.Error, ValueError):
+                # Fall back to comma if detection fails
+                delimiter = ','
 
             reader = csv.DictReader(csvfile, delimiter=delimiter)
 

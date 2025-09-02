@@ -5,6 +5,7 @@ This module provides the abstract base class for all todo list converters.
 """
 
 import json
+import re
 import time
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -149,8 +150,6 @@ class BaseConverter(ABC):
         """
         if not estimate_str or estimate_str.strip() == "":
             return 0
-
-        import re
 
         estimate_str = estimate_str.strip().lower()
         total_ms = 0
