@@ -559,7 +559,7 @@ class MarkdownConverter(BaseConverter):
                 content = re.sub(pattern, "", content, flags=re.IGNORECASE)
                 break
 
-        # Extract markdown formatting and convert to notes
+        # Extract markdown bold formatting once and convert to notes
         bold_pattern = r"\*\*([^*]+)\*\*"
         bold_matches = re.findall(bold_pattern, content)
         if bold_matches:

@@ -47,7 +47,7 @@ class CSVConverter(BaseConverter):
                 # Fall back to comma if detection fails
                 delimiter = ','
 
-            reader = csv.DictReader(csvfile, delimiter=delimiter)
+            reader = csv.DictReader(csvfile, delimiter=delimiter, skipinitialspace=True)
 
             for row_num, row in enumerate(reader, start=2):  # Start at 2 for header
                 try:
@@ -78,12 +78,10 @@ class CSVConverter(BaseConverter):
             id=generate_id(), title=title, notes=row.get("notes", "").strip() or None
         )
 
-        # Parse completion status
+        # Parse completion status (doneOn will be set after created is parsed)
         is_done_str = row.get("isDone", "").strip().lower()
         if is_done_str in ("true", "1", "yes", "completed", "done"):
             task.isDone = True
-            if task.isDone:
-                task.doneOn = task.created
 
         # Parse time estimate
         time_estimate_str = row.get("timeEstimate", "").strip()
@@ -110,6 +108,10 @@ class CSVConverter(BaseConverter):
                 task.modified = int(
                     datetime.strptime(parsed_date, "%Y-%m-%d").timestamp() * 1000
                 )
+
+        # Ensure doneOn uses the (possibly) parsed created timestamp
+        if task.isDone and not task.doneOn:
+            task.doneOn = task.created
 
         due_day_str = row.get("dueDay", "").strip()
         if due_day_str:
