@@ -5,12 +5,11 @@ This module contains comprehensive tests for the Todo.txt to Super Productivity 
 """
 
 import tempfile
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 import pytest
 
-# Adjust the import path to match your project structure
 from src.todo_converter.todo_txt_converter import TodoTxtConverter
 
 
@@ -25,7 +24,9 @@ x (A) 2023-10-01 2023-09-01 Task 1 +ProjectA @tag1
 Task 3 @tag1
         """
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".txt", delete=False, encoding="utf-8"
+        ) as f:
             f.write(todotxt_data.strip())
             txt_file = Path(f.name)
 
@@ -43,11 +44,13 @@ Task 3 @tag1
             # Check timestamps (approximate check or exact conversion)
             assert task1.created == int(datetime(2023, 9, 1).timestamp() * 1000)
             assert task1.doneOn == int(datetime(2023, 10, 1).timestamp() * 1000)
-            
+
             # Check Project A mapping
-            project_a = next(p for p in converter.projects.values() if p.title == "ProjectA")
+            project_a = next(
+                p for p in converter.projects.values() if p.title == "ProjectA"
+            )
             assert task1.projectId == project_a.id
-            
+
             # Check Tags (Context + Priority)
             tag_titles = [converter.tags[tid].title for tid in task1.tagIds]
             assert "tag1" in tag_titles
@@ -58,19 +61,23 @@ Task 3 @tag1
             assert "Task 2" in task2.title
             assert task2.isDone is False
             assert task2.created == int(datetime(2023, 10, 2).timestamp() * 1000)
-            
-            project_b = next(p for p in converter.projects.values() if p.title == "ProjectB")
+
+            project_b = next(
+                p for p in converter.projects.values() if p.title == "ProjectB"
+            )
             assert task2.projectId == project_b.id
-            
+
             tag_titles_2 = [converter.tags[tid].title for tid in task2.tagIds]
             assert "Priority B" in tag_titles_2
 
             # --- Task 3: Inbox (No project), Tag ---
             task3 = converter.tasks[2]
             assert "Task 3" in task3.title
-            default_project = next(p for p in converter.projects.values() if p.title == "Imported Tasks")
+            default_project = next(
+                p for p in converter.projects.values() if p.title == "Imported Tasks"
+            )
             assert task3.projectId is default_project.id
-            
+
             tag_titles_3 = [converter.tags[tid].title for tid in task3.tagIds]
             assert "tag1" in tag_titles_3
 
@@ -85,7 +92,9 @@ Task with minutes time:30m
 Task with mixed t:1h30m
         """
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".txt", delete=False, encoding="utf-8"
+        ) as f:
             f.write(todotxt_data.strip())
             txt_file = Path(f.name)
 
@@ -117,7 +126,9 @@ Task 1 due:2023-12-15
 Task 2 due:2023-12-16 +ProjectX
         """
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".txt", delete=False, encoding="utf-8"
+        ) as f:
             f.write(todotxt_data.strip())
             txt_file = Path(f.name)
 
@@ -141,7 +152,9 @@ Check website http://google.com for updates
 Read docs at https://docs.python.org/3/library/re.html
         """
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".txt", delete=False, encoding="utf-8"
+        ) as f:
             f.write(todotxt_data.strip())
             txt_file = Path(f.name)
 
@@ -150,11 +163,11 @@ Read docs at https://docs.python.org/3/library/re.html
             converter.parse()
 
             assert len(converter.tasks) == 2
-            
+
             # Title should contain the full URL
             assert "http://google.com" in converter.tasks[0].title
             assert "https://docs.python.org" in converter.tasks[1].title
-            
+
             # Should not have extracted 'http' or 'https' as metadata keys
             # (This verifies the _METADATA_KEY_PATTERN regex logic)
 
@@ -163,7 +176,9 @@ Read docs at https://docs.python.org/3/library/re.html
 
     def test_empty_todotxt_file(self) -> None:
         """Test handling of empty Todo.txt file."""
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".txt", delete=False, encoding="utf-8"
+        ) as f:
             f.write("")  # Empty file
             txt_file = Path(f.name)
 
@@ -172,7 +187,7 @@ Read docs at https://docs.python.org/3/library/re.html
             converter.parse()
 
             assert len(converter.tasks) == 0
-            assert len(converter.projects) == 1 # we still have the default project
+            assert len(converter.projects) == 1  # we still have the default project
 
         finally:
             txt_file.unlink()
@@ -190,7 +205,9 @@ Read docs at https://docs.python.org/3/library/re.html
         """Test generation of Super Productivity JSON structure from Todo.txt."""
         todotxt_data = "Test Task +TestProject @test-tag"
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".txt", delete=False, encoding="utf-8"
+        ) as f:
             f.write(todotxt_data)
             txt_file = Path(f.name)
 
@@ -208,11 +225,11 @@ Read docs at https://docs.python.org/3/library/re.html
             task_data = data["data"]["task"]
             assert len(task_data["ids"]) == 1
             assert len(task_data["entities"]) == 1
-            
+
             # Check project data
             project_data = data["data"]["project"]
             assert len(project_data["ids"]) == 2  # TestProject and default project
-            
+
             # Check tag data
             tag_data = data["data"]["tag"]
             assert len(tag_data["ids"]) == 1  # test-tag

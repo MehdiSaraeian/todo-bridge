@@ -15,7 +15,7 @@ from .models import Task, generate_id
 class TodoTxtConverter(BaseConverter):
     """
     Converter for Todo.txt format todo lists.
-    
+
     Standard Todo.txt format:
     x (A) 2023-10-01 2023-09-01 Task description +Project @Context due:2023-10-15
     """
@@ -36,7 +36,7 @@ class TodoTxtConverter(BaseConverter):
             for line_num, line in enumerate(f, start=1):
                 if not line.strip():
                     continue
-                
+
                 try:
                     task = self._parse_todotxt_line(line)
                     if task:
@@ -59,14 +59,13 @@ class TodoTxtConverter(BaseConverter):
         if not tokens:
             return None
 
-        # Initialize parsing variables
         completed = False
         priority = None
         completion_date_str = None
         creation_date_str = None
-        
+
         # 1. Check Completion (Must be at the very start)
-        if tokens[0] == 'x':
+        if tokens[0] == "x":
             completed = True
             tokens.pop(0)
 
@@ -76,12 +75,12 @@ class TodoTxtConverter(BaseConverter):
             tokens.pop(0)
 
         # 3. Check Dates
-        # Logic: 
+        # Logic:
         # - If completed: 1st date = completion, 2nd date = creation.
         # - If not completed: 1st date = creation.
         date1 = None
         date2 = None
-        
+
         if tokens and self._DATE_PATTERN.match(tokens[0]):
             date1 = tokens.pop(0)
             if tokens and self._DATE_PATTERN.match(tokens[0]):
@@ -92,18 +91,18 @@ class TodoTxtConverter(BaseConverter):
             creation_date_str = date2
         else:
             creation_date_str = date1
-            # If a second date was found but task is not completed, 
+            # If a second date was found but task is not completed,
             # strictly speaking in todo.txt, it's part of the description.
             if date2:
                 tokens.insert(0, date2)
 
         # Reconstruct description from remaining tokens to scan for tags/projects
         raw_description = " ".join(tokens)
-        
+
         # Extract Projects, Contexts, and Metadata
         projects = self._PROJECT_PATTERN.findall(raw_description)
         contexts = self._CONTEXT_PATTERN.findall(raw_description)
-        
+
         # Extract key:value pairs
         metadata = {}
         for match in self._KEY_VALUE_PATTERN.finditer(raw_description):
@@ -111,20 +110,16 @@ class TodoTxtConverter(BaseConverter):
             metadata[key.lower()] = value
 
         # Clean description: Remove +Project, @Context, and key:value to get clean title
-        # Note: Some users prefer keeping them in the title. 
-        # Here we strip them to match the CSV behavior of separating title from metadata.
         clean_title = raw_description
         clean_title = self._PROJECT_PATTERN.sub("", clean_title)
         clean_title = self._CONTEXT_PATTERN.sub("", clean_title)
         clean_title = self._KEY_VALUE_PATTERN.sub("", clean_title)
-        clean_title = re.sub(r'\s+', ' ', clean_title).strip()
+        clean_title = re.sub(r"\s+", " ", clean_title).strip()
 
         if not clean_title:
             # Fallback if everything was metadata
             clean_title = "Untitled Task"
 
-        # --- Build the Task Object ---
-        
         task = Task(
             id=generate_id(),
             title=clean_title,
@@ -172,7 +167,7 @@ class TodoTxtConverter(BaseConverter):
             tag = self._get_or_create_tag(context)
             if tag:
                 task.tagIds.append(tag.id)
-        
+
         # Add Priority as a tag if it exists (Super Productivity doesn't have A-Z priority field)
         if priority:
             priority_tag = self._get_or_create_tag(f"Priority {priority}")
