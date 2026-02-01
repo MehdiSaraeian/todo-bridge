@@ -1,13 +1,14 @@
 # Super Productivity Todo List Converter
 
-A Python tool to convert todo lists from various formats (CSV, Markdown) to Super Productivity JSON format for easy import.
+A Python tool to convert todo lists from various formats (CSV, Markdown, Todo.txt) to Super Productivity JSON format for easy import.
 
 ## Features
 
 - **CSV Support**: Convert CSV files with customizable columns
 - **Markdown Support**: Convert Markdown task lists with full hierarchy support
-- **Project Organization**: Automatically creates projects from headers or CSV project columns
-- **Tag Support**: Handle tags from CSV columns or hashtags in Markdown
+- **Todo.txt Support**: Convert standard Todo.txt files with priorities, contexts, and projects
+- **Project Organization**: Automatically creates projects from headers, CSV columns, or `+Project` tags (Todo.txt)
+- **Tag Support**: Handle tags from CSV columns, hashtags in Markdown, or `@Context` in Todo.txt
 - **Time Estimates**: Parse time estimates in various formats (1h, 30m, 2h 30m)
 - **Due Dates**: Support multiple date formats and due date specifications
 - **Subtasks**: Handle nested tasks and subtask relationships
@@ -33,9 +34,12 @@ You can run the tool directly from the repository using `python -m src.todo_conv
 # Convert CSV to JSON file
 python -m src.todo_converter input_file.csv output_file.json
 
-# Convert Markdown to JSON file  
+# Convert Markdown to JSON file
 python -m src.todo_converter input_file.md output_file.json
-  
+
+# Convert Todo.txt to JSON file
+python -m src.todo_converter input_file.txt output_file.json
+
 # Merge new tasks into existing Super Productivity backup:
 python -m src.todo_converter new_tasks.csv --merge backup.json merged_backup.json
 python -m src.todo_converter daily_todos.md --merge super-productivity-backup.json updated_backup.json
@@ -52,8 +56,8 @@ python -m src.todo_converter input_file.csv output_file.json --indent 4
 ```python
 from src.todo_converter import TodoConverter
 
-# Create converter
-converter = TodoConverter('my_todos.csv')
+# Create converter (auto-detects format based on extension)
+converter = TodoConverter('todo.txt')
 
 # Convert to dictionary
 data = converter.convert()
@@ -139,6 +143,32 @@ Supports various Markdown todo list formats:
 - **Bold Text**: `**bold**` converted to notes
 - **Nested Lists**: Indentation creates subtask hierarchy
 
+### Todo.txt Format
+
+Supports the standard Todo.txt format with extensions for time tracking:
+
+#### Supported Todo.txt Features
+
+- **Completion**: `x` at the start marks a task as done.
+- **Priority**: `(A)`, `(B)`, etc. at the start (mapped to tags like _Priority A_).
+- **Dates**: `YYYY-MM-DD`
+  - First date on a completed task is the _Completion Date_.
+  - Second date (or first on incomplete tasks) is the _Creation Date_.
+- **Projects**: `+ProjectName` (mapped to _Projects_).
+- **Contexts**: `@ContextName` (mapped to _Tags_).
+- **Metadata**: _key:value_ pairs.
+  - `due:YYYY-MM-DD`: Sets the due date.
+  - `t:30m` or `time:1h`: Sets the time estimate.
+
+#### Example Todo.txt
+
+```text
+(A) Call mom +Family @Phone
+x 2023-10-28 2023-10-27 Buy milk +Groceries @Shop
+2023-10-28 Write documentation +Work due:2023-10-30 t:1h
+(B) Review pull requests +Work @Computer time:30m
+```
+
 ## Output Format
 
 The converter generates a Super Productivity JSON structure with 19 required sections for successful import:
@@ -150,7 +180,7 @@ The converter generates a Super Productivity JSON structure with 19 required sec
       "ids": ["task-id-1", "task-id-2"],
       "entities": {
         "task-id-1": {
-          "id": "task-id-1", 
+          "id": "task-id-1",
           "title": "Task Title",
           "notes": "Task notes",
           "timeEstimate": 3600000,
@@ -194,7 +224,7 @@ When using `--merge`, the converter intelligently combines new tasks with existi
 
 - **Existing Projects**: New tasks are added to projects with matching names
 - **New Projects**: Created when no match is found
-- **Existing Tags**: Reused for tasks with matching tag names  
+- **Existing Tags**: Reused for tasks with matching tag names
 - **New Tags**: Created as needed
 - **Data Preservation**: All existing tasks, settings, and metadata are preserved
 - **No Overwrites**: Only additive operations, never deletes or modifies existing data
@@ -212,6 +242,9 @@ python -m src.todo_converter to-do_list.csv converted_csv.json
 # Convert the sample Markdown (creates new backup)
 python -m src.todo_converter to-do_list.md converted_md.json
 
+# Convert the sample Todo.txt (creates new backup)
+python -m src.todo_converter todo.txt converted_txt.json
+
 # Merge sample CSV into existing backup
 python -m src.todo_converter to-do_list.csv merged_backup.json --merge super-productivity-backup.json
 ```
@@ -220,7 +253,7 @@ python -m src.todo_converter to-do_list.csv merged_backup.json --merge super-pro
 
 #### Option 1: Full Import (Replace All Data)
 1. Run the converter without `--merge` to generate a JSON file
-2. Open Super Productivity  
+2. Open Super Productivity
 3. Go to Settings → Sync
 4. Use the import functionality to load your JSON file
 5. ⚠️ **Warning**: This replaces all existing data
@@ -271,10 +304,12 @@ todo-converter/
 │       ├── base.py            # Base converter class
 │       ├── csv_converter.py   # CSV converter
 │       ├── markdown_converter.py  # Markdown converter
+│       ├── todo_txt_converter.py  # Todo.txt converter
 │       └── converter.py       # Main converter interface
 ├── tests/
 │   ├── test_csv_converter.py
-│   └── test_markdown_converter.py
+│   ├── test_markdown_converter.py
+│   └── test_todo_txt_converter.py
 ├── convert_todos.py           # CLI script
 ├── requirements.txt           # Dependencies
 └── README.md                  # This file
