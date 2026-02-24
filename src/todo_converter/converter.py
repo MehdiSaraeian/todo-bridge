@@ -12,6 +12,7 @@ from typing import Any, Optional, Union
 from .base import BaseConverter
 from .csv_converter import CSVConverter
 from .markdown_converter import MarkdownConverter
+from .todo_txt_converter import TodoTxtConverter
 
 
 class TodoConverter:
@@ -27,6 +28,8 @@ class TodoConverter:
         ".csv": CSVConverter,
         ".md": MarkdownConverter,
         ".markdown": MarkdownConverter,
+        ".txt": TodoTxtConverter,
+        ".todo": TodoTxtConverter,
     }
 
     def __init__(self, input_file: Union[str, Path]) -> None:
