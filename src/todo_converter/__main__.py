@@ -36,7 +36,7 @@ Supported input formats:
   - Markdown files (.md, .markdown)
 
 CSV Format:
-  Expected columns: title, notes, project, tags, isDone, timeEstimate,
+  Expected columns: title, notes, project, tags, isDone, doneOn, timeEstimate,
   created, modified, dueDay, dueWithTime, remindAt, subtasks
 
 Markdown Format:
