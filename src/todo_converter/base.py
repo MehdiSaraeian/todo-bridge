@@ -127,12 +127,19 @@ class BaseConverter(ABC):
             "%Y-%m-%d %H:%M:%S",
             "%m/%d/%Y %H:%M:%S",
             "%d/%m/%Y %H:%M:%S",
+            "%Y-%m-%d %H:%M:%S.%f",
+            "%Y-%m-%d %H:%M:%S.%f %z",
         ]
 
         for fmt in date_formats:
             try:
                 parsed_date = datetime.strptime(date_str.strip(), fmt)
-                return parsed_date.strftime("%Y-%m-%d")
+                # If the original string contains a time component, prefer the full timestamp
+                if "%H" in fmt or "%f" in fmt:
+                # Return full timestamp with seconds precision
+                  return parsed_date.strftime("%Y-%m-%d %H:%M:%S")
+                else:
+                  return parsed_date.strftime("%Y-%m-%d")
             except ValueError:
                 continue
 
@@ -186,7 +193,7 @@ class BaseConverter(ABC):
         # Create lookup dictionaries for O(1) access instead of O(n) loops
         project_lookup = {proj.id: proj for proj in self.projects.values()}
         tag_lookup = {tag.id: tag for tag in self.tags.values()}
-        
+
         # Ensure all tasks are linked to their projects
         for task in self.tasks:
             if task.projectId and task.projectId in project_lookup:
@@ -490,7 +497,7 @@ class BaseConverter(ABC):
         # Create lookup dictionaries for O(1) access instead of O(n) loops
         project_lookup = {proj.id: proj for proj in self.projects.values()}
         tag_lookup = {tag.id: tag for tag in self.tags.values()}
-        
+
         # Ensure all tasks are linked to their projects
         for task in self.tasks:
             if task.projectId and task.projectId in project_lookup:

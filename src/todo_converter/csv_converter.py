@@ -21,6 +21,7 @@ class CSVConverter(BaseConverter):
     - project: Project name (optional)
     - tags: Comma-separated tags (optional)
     - isDone: Boolean completion status (optional, default: false)
+    - doneOn: timestamp for completion (optional)
     - timeEstimate: Time estimate in human-readable format (optional)
     - created: Creation date (optional)
     - modified: Modification date (optional)
@@ -39,7 +40,7 @@ class CSVConverter(BaseConverter):
             # Try to detect delimiter
             sample = csvfile.read(1024)
             csvfile.seek(0)
-            
+
             try:
                 sniffer = csv.Sniffer()
                 delimiter = sniffer.sniff(sample).delimiter
@@ -78,7 +79,7 @@ class CSVConverter(BaseConverter):
             id=generate_id(), title=title, notes=row.get("notes", "").strip() or None
         )
 
-        # Parse completion status (doneOn will be set after created is parsed)
+        # Parse completion status (doneOn will be set after created is parsed if not set via import)
         is_done_str = row.get("isDone", "").strip().lower()
         if is_done_str in ("true", "1", "yes", "completed", "done"):
             task.isDone = True
@@ -110,8 +111,19 @@ class CSVConverter(BaseConverter):
                 )
 
         # Ensure doneOn uses the (possibly) parsed created timestamp
+        # But first Parse doneOn timestamp
+        doneOn_str = row.get("doneOn", "").strip()
+        if doneOn_str:
+            parsed_date = self._parse_date(doneOn_str)
+            if parsed_date:
+                from datetime import datetime
+
+                task.doneOn = int(
+                    datetime.strptime(parsed_date, "%Y-%m-%d %H:%M:%S").timestamp() * 1000
+                )
+
         if task.isDone and not task.doneOn:
-            task.doneOn = task.created
+             task.doneOn = task.created
 
         due_day_str = row.get("dueDay", "").strip()
         if due_day_str:
