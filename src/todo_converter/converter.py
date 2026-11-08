@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Optional, Union
 
 from .base import BaseConverter
+from .clockify_converter import ClockifyConverter, is_clockify_csv
 from .csv_converter import CSVConverter
 from .markdown_converter import MarkdownConverter
 from .todo_txt_converter import TodoTxtConverter
@@ -20,8 +21,9 @@ class TodoConverter:
     Main converter class that handles multiple input formats.
 
     Supports:
-    - CSV files (.csv)
+    - CSV files (.csv), including Clockify detailed time reports (auto-detected)
     - Markdown files (.md, .markdown)
+    - Todo.txt files (.txt, .todo)
     """
 
     SUPPORTED_FORMATS: dict[str, type[BaseConverter]] = {
@@ -58,6 +60,8 @@ class TodoConverter:
 
         # Initialize the appropriate converter
         converter_class = self.SUPPORTED_FORMATS[file_extension]
+        if converter_class is CSVConverter and is_clockify_csv(self.input_file):
+            converter_class = ClockifyConverter
         self.converter: BaseConverter = converter_class(self.input_file)
 
     def convert(self) -> dict[str, Any]:
