@@ -33,7 +33,9 @@ Examples:
 
 Supported input formats:
   - CSV files (.csv)
+  - Clockify detailed time reports (.csv, auto-detected by header)
   - Markdown files (.md, .markdown)
+  - Todo.txt files (.txt, .todo)
 
 CSV Format:
   Expected columns: title, notes, project, tags, isDone, doneOn, timeEstimate,

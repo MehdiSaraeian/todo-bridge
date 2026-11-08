@@ -509,7 +509,12 @@ class MarkdownConverter(BaseConverter):
                 # For FILE type, ensure path doesn't contain dangerous patterns
                 if attachment_type == "FILE":
                     # Check for path traversal attempts
-                    if ".." in path or path.startswith("/") or path.startswith("\\") or ":" in path[1:]:
+                    if (
+                        ".." in path
+                        or path.startswith("/")
+                        or path.startswith("\\")
+                        or ":" in path[1:]
+                    ):
                         print(f"Warning: Skipping potentially unsafe file path: {path}")
                         continue
 

@@ -46,7 +46,7 @@ class CSVConverter(BaseConverter):
                 delimiter = sniffer.sniff(sample).delimiter
             except (csv.Error, ValueError):
                 # Fall back to comma if detection fails
-                delimiter = ','
+                delimiter = ","
 
             reader = csv.DictReader(csvfile, delimiter=delimiter, skipinitialspace=True)
 
@@ -119,11 +119,12 @@ class CSVConverter(BaseConverter):
                 from datetime import datetime
 
                 task.doneOn = int(
-                    datetime.strptime(parsed_date, "%Y-%m-%d %H:%M:%S").timestamp() * 1000
+                    datetime.strptime(parsed_date, "%Y-%m-%d %H:%M:%S").timestamp()
+                    * 1000
                 )
 
         if task.isDone and not task.doneOn:
-             task.doneOn = task.created
+            task.doneOn = task.created
 
         due_day_str = row.get("dueDay", "").strip()
         if due_day_str:

@@ -7,6 +7,7 @@ A Python tool to convert todo lists from various formats (CSV, Markdown, Todo.tx
 - **CSV Support**: Convert CSV files with customizable columns
 - **Markdown Support**: Convert Markdown task lists with full hierarchy support
 - **Todo.txt Support**: Convert standard Todo.txt files with priorities, contexts, and projects
+- **Clockify Support**: Import Clockify detailed time reports including all tracked time and projects
 - **Project Organization**: Automatically creates projects from headers, CSV columns, or `+Project` tags (Todo.txt)
 - **Tag Support**: Handle tags from CSV columns, hashtags in Markdown, or `@Context` in Todo.txt
 - **Time Estimates**: Parse time estimates in various formats (1h, 30m, 2h 30m)
@@ -39,6 +40,9 @@ python -m src.todo_converter input_file.md output_file.json
 
 # Convert Todo.txt to JSON file
 python -m src.todo_converter input_file.txt output_file.json
+
+# Convert a Clockify detailed time report (CSV export, auto-detected)
+python -m src.todo_converter Clockify_Time_Report_Detailed.csv output_file.json
 
 # Merge new tasks into existing Super Productivity backup:
 python -m src.todo_converter new_tasks.csv --merge backup.json merged_backup.json
@@ -93,6 +97,19 @@ title,notes,project,tags,isDone,timeEstimate,dueDay,subtasks
 "Buy groceries","","Personal","shopping",false,"30m","2023-12-25",""
 "Meeting with team","Discuss Q4 goals","Work","meeting",true,"1h","",""
 ```
+
+#### Clockify CSV
+
+To export CSVs from your clockify (https://clockify.me/) account you might need to upgrade your plan. Go to *Reports, use the *detail view* (https://app.clockify.me/reports/detailed), than select export as CSV.
+
+You should recieve a CSV in this layout:
+
+````
+|   Project  |   Client  |   Description  |   Task  |   User  |   Group  |   Email  |   Tags  |   Billable  |   Start Date  |   Start Time  |   End Date  |   End Time  |   Duration (h)  |   Duration (decimal)  |   Billable Rate (USD)  |   Billable Amount (USD)  |   Date of creation  |
+|------------|-----------|----------------|---------|---------|----------|----------|---------|-------------|---------------|---------------|-------------|-------------|-----------------|-----------------------|------------------------|--------------------------|---------------------|
+|            |           |                |         |         |          |          |         |             |               |               |             |             |                 |                       |                        |                          |                     |
+|            |           |                |         |         |          |          |         |             |               |               |             |             |                 |                       |                        |                          |                     |
+|            |           |                |         |         |          |          |         |             |               |               |             |             |                 |                       |                        |                          |                   ````
 
 ### Markdown Format
 
@@ -168,6 +185,18 @@ x 2023-10-28 2023-10-27 Buy milk +Groceries @Shop
 2023-10-28 Write documentation +Work due:2023-10-30 t:1h
 (B) Review pull requests +Work @Computer time:30m
 ```
+
+### Clockify Time Reports
+
+Export a **Detailed** report in Clockify (Reports → Detailed → Export → Save as CSV). Comma- and semicolon-separated exports are both supported. The file is recognized by its header (`Project`, `Description`, `Start Date`, `Start Time`) and converted like this:
+
+- **Projects**: The `Project` column becomes a project; entries without a project go to _Imported Tasks_.
+- **Tasks**: All entries with the same project, Clockify task and description are merged into one task. The `Description` is the task title.
+- **Tracked time**: Entry durations are summed per day into the task's `timeSpentOnDay` (entries spanning midnight are split) and in total into `timeSpent`. The first start and last end per project and day are written to `timeTracking` (work start/end).
+- **Tags**: The comma-separated `Tags` column becomes tags.
+- **Notes**: `Task` (if a description exists) and `Client` are added to the notes.
+- **Dates**: Day/month order (`DD/MM/YYYY`, `MM/DD/YYYY`, `YYYY-MM-DD`) is detected automatically; both 24h and 12h (AM/PM) times are supported. If the report is ambiguous (all days ≤ 12 and as many distinct days as months), it defaults to `DD/MM/YYYY`; use `ClockifyConverter(path, date_order="MDY")` from Python to force the order.
+- Imported tasks are left open (not done), since they usually represent ongoing work.
 
 ## Output Format
 
@@ -305,9 +334,11 @@ todo-converter/
 │       ├── csv_converter.py   # CSV converter
 │       ├── markdown_converter.py  # Markdown converter
 │       ├── todo_txt_converter.py  # Todo.txt converter
+│       ├── clockify_converter.py  # Clockify time report converter
 │       └── converter.py       # Main converter interface
 ├── tests/
 │   ├── test_csv_converter.py
+│   ├── test_clockify_converter.py
 │   ├── test_markdown_converter.py
 │   └── test_todo_txt_converter.py
 ├── convert_todos.py           # CLI script

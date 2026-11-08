@@ -136,10 +136,10 @@ class BaseConverter(ABC):
                 parsed_date = datetime.strptime(date_str.strip(), fmt)
                 # If the original string contains a time component, prefer the full timestamp
                 if "%H" in fmt or "%f" in fmt:
-                # Return full timestamp with seconds precision
-                  return parsed_date.strftime("%Y-%m-%d %H:%M:%S")
+                    # Return full timestamp with seconds precision
+                    return parsed_date.strftime("%Y-%m-%d %H:%M:%S")
                 else:
-                  return parsed_date.strftime("%Y-%m-%d")
+                    return parsed_date.strftime("%Y-%m-%d")
             except ValueError:
                 continue
 
