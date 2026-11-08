@@ -100,7 +100,7 @@ title,notes,project,tags,isDone,timeEstimate,dueDay,subtasks
 
 #### Clockify CSV
 
-To export CSVs from your clockify (https://clockify.me/) account you might need to upgrade your plan. Go to *Reports, use the *detail view* (https://app.clockify.me/reports/detailed), than select export as CSV.
+To export CSVs from your Clockify account you might need to upgrade your plan. Go to **Reports**, use the [**detail view**](https://app.clockify.me/reports/detailed), than select export as CSV.
 
 You should recieve a CSV in this layout:
 
@@ -109,7 +109,8 @@ You should recieve a CSV in this layout:
 |------------|-----------|----------------|---------|---------|----------|----------|---------|-------------|---------------|---------------|-------------|-------------|-----------------|-----------------------|------------------------|--------------------------|---------------------|
 |            |           |                |         |         |          |          |         |             |               |               |             |             |                 |                       |                        |                          |                     |
 |            |           |                |         |         |          |          |         |             |               |               |             |             |                 |                       |                        |                          |                     |
-|            |           |                |         |         |          |          |         |             |               |               |             |             |                 |                       |                        |                          |                   ````
+|            |           |                |         |         |          |          |         |             |               |               |             |             |                 |                       |                        |                          |
+````
 
 ### Markdown Format
 
