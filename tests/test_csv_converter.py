@@ -223,6 +223,32 @@ class TestCSVConverter:
         finally:
             csv_file.unlink()
 
+    def test_csv_short_row_missing_trailing_fields(self) -> None:
+        """Rows that omit trailing optional columns still convert."""
+        csv_data = [
+            ["title", "project", "notes"],
+            ["Buy milk"],
+            ["Call mom", "Home"],
+        ]
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
+            writer = csv.writer(f)
+            writer.writerows(csv_data)
+            csv_file = Path(f.name)
+
+        try:
+            converter = CSVConverter(csv_file)
+            converter.parse()
+
+            # Both rows convert; missing columns behave as empty strings.
+            assert len(converter.tasks) == 2
+            assert converter.tasks[0].title == "Buy milk"
+            assert converter.tasks[1].title == "Call mom"
+            assert converter.tasks[1].projectId is not None
+
+        finally:
+            csv_file.unlink()
+
     def test_generate_super_productivity_data(self) -> None:
         """Test generation of Super Productivity JSON structure."""
         csv_data = [
