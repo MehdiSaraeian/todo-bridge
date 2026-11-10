@@ -69,6 +69,10 @@ class CSVConverter(BaseConverter):
         Returns:
             Task object or None if the row is invalid
         """
+        # DictReader yields None for columns missing from a short row;
+        # treat them as empty strings so the row still converts.
+        row = {key: (value or "") for key, value in row.items() if key is not None}
+
         # Title is required
         title = row.get("title", "").strip()
         if not title:
